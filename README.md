@@ -1,103 +1,117 @@
 # Co-Speech Gesture Generation: MambaTalk & GestureLSM Ablation Study
 
-This repository contains the source code, dataset processing scripts, evaluation tools, and final reports (PDF and Poster) for our project on speech-driven 3D gesture generation. 
+Project **Cassiopée** (Télécom SudParis, 2026), by **Alexandre Gonzalez** and **Mark Kriov**.
 
-The primary focus of this work is investigating the robustness of state-of-the-art gesture synthesis models (**MambaTalk** and **GestureLSM**) under data-scarce conditions (100%, 50%, and 25% training data ablation). We also provide a custom **Grad-CAM** implementation to interpret the audio-to-motion attention maps.
+We study how robust two state-of-the-art speech-driven 3D gesture generators, **MambaTalk** and **GestureLSM**, are when training data is scarce (100 %, 50 % and 25 % of the training set), and we use a temporal **Grad-CAM** to see which parts of the audio the models rely on.
+
+**Main finding:** MambaTalk stops using the audio signal when trained with 25 % of the data, even though its usual metrics stay stable. The full analysis is in the report: [`Report_Cassiopee2026_GONZALEZ_KIROV.pdf`](Report_Cassiopee2026_GONZALEZ_KIROV.pdf). The poster is in [`92_Poster/`](92_Poster).
+
+## Contributions
+
+| | Work |
+|---|---|
+| **Alexandre Gonzalez** | MambaTalk side: data-ablation script (`Mambatalk/make_splits.py`), training and evaluation runs at 100 / 50 / 25 %, loss plots (`Mambatalk/plots/`), Grad-CAM analysis of MambaTalk, dataset rearrangement code, TextGrid generation for the demo (`GestureLSM/generate_textgrid.py`) |
+| **Mark Kriov** | GestureLSM side: training and ablation runs, interpretability features added to the trainer and visualisation (`GestureLSM/trainer/`, `GestureLSM/visualize.py`), live demo (`GestureLSM/run_live_demo.py`) |
+
+<!-- TODO : confirmer cette répartition avec Mark avant publication. -->
+
+## Third-party code, data and licences
+
+This repository bundles the original implementations of two published models, which we modified for our experiments. Their licences apply to their code:
+
+- `Mambatalk/` : MambaTalk, with its own [`LICENSE`](Mambatalk/LICENSE)
+- `GestureLSM/` : GestureLSM, released under Apache 2.0 according to its own README
+
+See `Mambatalk/README.md` and `GestureLSM/README.md` for the original papers and citations. The experiments use the **BEAT2** dataset, which is not redistributed here: download it from its official source and follow its terms of use. Pretrained weights are not included either; get them by following the upstream READMEs.
 
 ---
 
 ## Repository Structure
 
-* `configs/` : YAML configuration files for the models.
-* `dataloaders/` : Scripts for loading and caching the BEAT2 dataset.
-* `GradCam/` : Custom implementation of temporal Grad-CAM for MambaTalk/GestureLSM.
-* `outputs/` : Generated `.npz` motions, rendered `.mp4` videos, and Grad-CAM heatmaps.
-* `pretrained/` : Pre-trained Vector Quantized Auto-Encoders (VQ-VAE) and baseline models.
-* `92_Poster/` : Contains the project poster.
+* `Mambatalk/` : MambaTalk code with our ablation scripts, loss plots and Grad-CAM.
+* `GestureLSM/` : GestureLSM code with our interpretability features and demo scripts.
+* `92_Poster/` : the project poster.
+* `Report_Cassiopee2026_GONZALEZ_KIROV.pdf` : the project report.
 
 ---
 
 ## 1. Dataset Processing & Ablation
 
-We utilize the **BEAT2 (Body-Expression-Audio-Text) dataset**. Ensure the dataset is downloaded and extracted, containing the `wave16k`, `smplxflame_30`, and `textgrid` folders.
+We use the **BEAT2 (Body-Expression-Audio-Text) dataset**. Make sure it is downloaded and extracted, containing the `wave16k`, `smplxflame_30` and `textgrid` folders.
 
 ### Standard Setup
-Update the dataset path in your configuration file (e.g., "configs/mambatalk.yaml"):
+Update the dataset path in your configuration file (e.g. `configs/mambatalk.yaml`):
 `data_path: /path/to/BEAT2/beat_english_v2.0.0/`
 
-### Performing Data Ablation (50% or 25%)
-### MambaTalk
-To test the models' robustness, we created a script to uniformly reduce the training data for specific speakers while preserving the exact same validation and test sets. It is called "make_splits.py". You just have to run it to obtain the 50% and 25% dataset.
+### Performing Data Ablation (50 % or 25 %)
 
-After swapping your "train_test_split.csv" with an ablated version, you must force the dataloader to rebuild the LMDB cache. In your .yaml config file, set : `new_cache: True`
+#### MambaTalk
+To test the models' robustness, we created a script that uniformly reduces the training data for specific speakers while keeping the exact same validation and test sets. It is called `make_splits.py`: run it to obtain the 50 % and 25 % datasets.
 
-### GestureLSM
-To reduce uniformly the training data you have to modify the cache_generation function in beat_sep_lower.py to match what percentage of the training data you want to keep before running a train.
-Ex : If you want 50% training data uncomment the `if not is_test:` part and make `half_count = original_count // 2`.
+After swapping your `train_test_split.csv` with an ablated version, force the dataloader to rebuild the LMDB cache by setting `new_cache: True` in your `.yaml` config file.
 
-Note : Always make sure you have `new_cache : True` in your config file when training a model with different percentage of training data.
+#### GestureLSM
+To reduce the training data uniformly, modify the `cache_generation` function in `beat_sep_lower.py` to keep the percentage you want before running a training.
+Example: for 50 % of the training data, uncomment the `if not is_test:` part and set `half_count = original_count // 2`.
+
+Note: always set `new_cache: True` in your config file when training a model with a different percentage of training data.
 
 ## 2. Training the Models
 
-Once the dataset is prepared (and the cache is set to be rebuilt if changed), you can train the model from scratch.
+Once the dataset is prepared (and the cache is set to be rebuilt if changed), you can train a model from scratch.
+
 ### MambaTalk
 
-Launch the training pipeline with this command :
+Launch the training with:
 `python train.py --config configs/mambatalk.yaml`
 
-Or just with : `bash run_scripts/train.sh`
-Note : For the second option, you have to check the gpu and configname variable.
+Or with: `bash run_scripts/train.sh` (check the GPU and config name variables first).
 
-The checkpoints (.bin files) will be saved in the directory specified by out_path in your config file (i.e. the mambatalk.yaml file).
-
+The checkpoints (`.bin` files) are saved in the directory given by `out_path` in your config file.
 
 ### GestureLSM
 
-You can train the model using this command :
-` CUDA_VISIBLE_DEVICES=1 python train.py --config configs_new/shortcut_rvqvae_128.yaml `
+`CUDA_VISIBLE_DEVICES=1 python train.py --config configs_new/shortcut_rvqvae_128.yaml`
 
-Note : Use whatever gpu is available. Also I used the shortcut method but you can use another.
+Use whichever GPU is available. We used the shortcut method, but you can use another one.
 
-The checkpoints will be saved in the output_dir configured in the config file.
+The checkpoints are saved in the `output_dir` set in the config file.
 
 ## 3. Evaluation & Inference
 
-### Mambatalk
+### MambaTalk
 
 #### Generating Motion Sequences
-To generate .npz gesture files from a trained model, ensure test_ckpt in your .yaml points to your desired model checkpoint. Then run :
+To generate `.npz` gesture files from a trained model, make sure `test_ckpt` in your `.yaml` points to the checkpoint you want, then run:
 `python test.py --config configs/mambatalk.yaml`
 
-Or just : `bash run_scripts/test.sh` in which you can choose your gpu, just as for the training.
+Or: `bash run_scripts/test.sh` (you can choose your GPU, as for training).
 
 #### Rendering Videos and Visualization
-To visualize the .npz outputs alongside the original audio, use the render script :
+To visualise the `.npz` outputs alongside the original audio, use the render script:
 `xvfb-run -a python render.py --npy_path "outputs/audio2pose/custom/YOUR_RUN/res_2_scott_0_1_1.npz" --wav_path "/path/to/wave16k/2_scott_0_1_1.wav" --save_dir "outputs/render"`
 
-Note : you can choose any other speaker besides 2_scott_0_1_1 of course. But we recommend to use a speaker who has many sequences. It will be hard to have a performative speaker if he has few sequences for the 25% datasets (not enough data).
+You can pick another speaker than `2_scott_0_1_1`, but we recommend one with many sequences: a speaker with few sequences will not give a convincing result with the 25 % dataset.
 
-BUT we recommend to you to use Blender to visualize your model. You can also put the audio in "Video Editing->Video Editing" and synchronize it with your model.
-
+We also recommend Blender to visualise your model: you can add the audio in *Video Editing* and synchronise it with your model.
 
 #### Interpretability via Grad-CAM
-To analyze how the model relies on acoustic cues (and how data ablation smooths out this attention), use our custom Grad-CAM implementation:
+To analyse how the model relies on acoustic cues (and how data ablation changes this attention), use our Grad-CAM implementation:
 `python GradCam/gradcam.py`
 
-This script will output both 1D and 2D temporal heatmaps in the outputs/gradcam/ folder, aligning audio waveforms, spectrograms, TextGrid words, and the model's gradient magnitude.
-
+It outputs 1D and 2D temporal heatmaps in `outputs/gradcam/`, aligning audio waveforms, spectrograms, TextGrid words and the model's gradient magnitude.
 
 ### GestureLSM
 
 #### Generating Motion Sequences and Grad-CAM
-To generate motion sequences (.npz files) and Grad-CAM plots you need to run the test command:
-`python train.py --config configs_new/NAME_OF_CONFIG.yaml   --ckpt PATH_TO_YOUR_CHECKPOINT.ckpt   --mode test`
+To generate motion sequences (`.npz`) and Grad-CAM plots, run the test command:
+`python train.py --config configs_new/NAME_OF_CONFIG.yaml --ckpt PATH_TO_YOUR_CHECKPOINT.ckpt --mode test`
 
-You can visualize it on blender.
-
+You can visualise the result in Blender.
 
 ## 4. Demo
-You can make a Demo with your own audio and observe how your model behaves : 
-- First, record yourselves with your phone or any other device to have a .mp4 or .m4a file. We suggest you to modify your volume voice during the recording so you will observe the variation in movements much more easier.
-- Then, you can add your audio file and run the "generate_textgrid.py" script. It will first convert your file into a .wav file. After that, it will generate a TextGrid file which is important to give the "context" to your model. Indeed, the model isn't able to do specific movements if it doesn't know the specific word associated to this movement.
-- Finally, you can run the "run_live_demo.py" file. It will generate a .npz file that you can put in Blender to visualize your model. 
 
+You can run a demo with your own audio and observe how your model behaves:
+- Record yourself with a phone or any device (`.mp4` or `.m4a`). Vary the volume of your voice during the recording: the variations in movement are easier to observe.
+- Add your audio file and run `generate_textgrid.py`. It converts your file to `.wav` and generates a TextGrid file, which gives the model the "context" (the words) it needs for specific movements.
+- Run `run_live_demo.py`: it generates an `.npz` file that you can load in Blender to visualise your model.

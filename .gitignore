@@ -1,0 +1,11 @@
+# Python
+__pycache__/
+*.pyc
+# Données, poids et sorties d'entraînement (à télécharger ou générer)
+outputs/
+*.ckpt
+*.bin
+*.pkl
+*.mdb
+GestureLSM/weights/
+GestureLSM/custom_dataset/
