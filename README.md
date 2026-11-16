@@ -4,7 +4,7 @@ Project **Cassiopée** (Télécom SudParis, 2026), by **Alexandre Gonzalez** and
 
 We study how robust two state-of-the-art speech-driven 3D gesture generators, **MambaTalk** and **GestureLSM**, are when training data is scarce (100 %, 50 % and 25 % of the training set), and we use a temporal **Grad-CAM** to see which parts of the audio the models rely on.
 
-**Main finding:** MambaTalk stops using the audio signal when trained with 25 % of the data, even though its usual metrics stay stable. The full analysis is in the report: [`Report_Cassiopee2026_GONZALEZ_KIROV.pdf`](Report_Cassiopee2026_GONZALEZ_KIROV.pdf). The poster is in [`92_Poster/`](92_Poster).
+**Main finding:** MambaTalk stops using the audio signal when trained with 25 % of the data, even though its usual metrics stay stable. The full analysis is in the report: [`Report_Cassiopee2026_GONZALEZ_KIROV.pdf`](Report_Cassiopee2026_GONZALEZ_KIROV.pdf).
 
 ## Contributions
 
@@ -30,7 +30,6 @@ See `Mambatalk/README.md` and `GestureLSM/README.md` for the original papers and
 
 * `Mambatalk/` : MambaTalk code with our ablation scripts, loss plots and Grad-CAM.
 * `GestureLSM/` : GestureLSM code with our interpretability features and demo scripts.
-* `92_Poster/` : the project poster.
 * `Report_Cassiopee2026_GONZALEZ_KIROV.pdf` : the project report.
 
 ---
@@ -96,10 +95,10 @@ You can pick another speaker than `2_scott_0_1_1`, but we recommend one with man
 We also recommend Blender to visualise your model: you can add the audio in *Video Editing* and synchronise it with your model.
 
 #### Interpretability via Grad-CAM
-To analyse how the model relies on acoustic cues (and how data ablation changes this attention), use our Grad-CAM implementation:
-`python GradCam/gradcam.py`
+We applied a temporal Grad-CAM to MambaTalk's audio encoders (face and body) to see how much the model relies on the audio when the training data shrinks. The resulting heatmaps align audio waveforms, spectrograms, TextGrid words and the model's gradient magnitude; they are shown as Figures 9 and 10 of the report.
 
-It outputs 1D and 2D temporal heatmaps in `outputs/gradcam/`, aligning audio waveforms, spectrograms, TextGrid words and the model's gradient magnitude.
+<!-- TODO : ajouter Mambatalk/GradCam/gradcam.py puis remplacer ce paragraphe par la commande d'utilisation. -->
+The MambaTalk Grad-CAM script is not included in this repository yet; the results and method are described in the report.
 
 ### GestureLSM
 
